@@ -100,19 +100,20 @@ public extension UIImageView {
                        manager: SwiftyGifManager = .defaultManager,
                        loopCount: Int = -1,
                        levelOfIntegrity: GifLevelOfIntegrity = .default,
-                       showLoader: Bool = true) -> URLSessionDataTask {
+                       showLoader: Bool = true,
+                       onStartLoading: () -> Void = {},
+                       onFinishLoading: @escaping () -> Void = {}) -> URLSessionDataTask {
         stopAnimatingGif()
-        let loader: UIActivityIndicatorView? = showLoader ? createLoader() : nil
-        
+        onStartLoading()
         let task = URLSession.shared.dataTask(with: url) { data, _, error in
             DispatchQueue.main.async {
-                loader?.removeFromSuperview()
                 self.parseDownloadedGif(url: url,
                                         data: data,
                                         error: error,
                                         manager: manager,
                                         loopCount: loopCount,
-                                        levelOfIntegrity: levelOfIntegrity)
+                                        levelOfIntegrity: levelOfIntegrity,
+                                        onFinishLoading: onFinishLoading)
             }
         }
         
@@ -148,9 +149,11 @@ public extension UIImageView {
                                     error: Error?,
                                     manager: SwiftyGifManager,
                                     loopCount: Int,
-                                    levelOfIntegrity: GifLevelOfIntegrity) {
+                                    levelOfIntegrity: GifLevelOfIntegrity,
+                                    onFinishLoading: () -> Void = {}) {
         guard let data = data else {
             report(url: url, error: error)
+            onFinishLoading()
             return
         }
         
@@ -159,8 +162,10 @@ public extension UIImageView {
             setGifImage(image, manager: manager, loopCount: loopCount)
             startAnimatingGif()
             delegate?.gifURLDidFinish?(sender: self)
+            onFinishLoading()
         } catch {
             report(url: url, error: error)
+            onFinishLoading()
         }
     }
     
